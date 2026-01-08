@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Cart } from '@/components/cart';
 import { type Product } from '@/lib/products';
 import { useCart } from './cart-context';
+import { trackAddToCart } from '@/lib/analytics';
 
 export const SIZES = [
   { label: 'S-M', value: 0 },
@@ -19,8 +20,22 @@ export function AddToCart({ product }: { product: Product }) {
   const { addToCart } = useCart();
 
   const handleAddToCart = useCallback(
-    (size: number) => {
-      addToCart(product, size);
+    async (size: number) => {
+      const variantId = product.variants?.[size]?.id || product.variantId;
+      const price = product.variants?.[size]?.price || product.price || '0';
+
+      // Track the add to cart event
+      trackAddToCart({
+        id: product.id,
+        name: product.name,
+        price,
+        quantity: 1,
+        variantId,
+        currencyCode: product.currencyCode,
+      });
+
+      // Add to cart with variant ID
+      await addToCart(product, size, variantId);
       setIsSelectingSize(false);
       setIsCartOpen(true);
     },

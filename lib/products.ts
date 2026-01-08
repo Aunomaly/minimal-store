@@ -1,12 +1,60 @@
+import { getProducts as fetchShopifyProducts, getProductByHandle, type ShopifyProduct } from './shopify';
+
 export interface Product {
   id: string;
   name: string;
   image: string;
+  handle?: string;
+  price?: string;
+  currencyCode?: string;
+  variantId?: string;
+  variants?: Array<{
+    id: string;
+    title: string;
+    price: string;
+    availableForSale: boolean;
+  }>;
 }
 
+// Adapter function to convert Shopify products to our Product interface
+export function shopifyProductToProduct(shopifyProduct: ShopifyProduct): Product {
+  const firstImage = shopifyProduct.images.edges[0]?.node.url || '';
+  const firstVariant = shopifyProduct.variants.edges[0]?.node;
+
+  return {
+    id: shopifyProduct.handle,
+    name: shopifyProduct.title,
+    image: firstImage,
+    handle: shopifyProduct.handle,
+    price: shopifyProduct.priceRange.minVariantPrice.amount,
+    currencyCode: shopifyProduct.priceRange.minVariantPrice.currencyCode,
+    variantId: firstVariant?.id,
+    variants: shopifyProduct.variants.edges.map((edge) => ({
+      id: edge.node.id,
+      title: edge.node.title,
+      price: edge.node.price.amount,
+      availableForSale: edge.node.availableForSale,
+    })),
+  };
+}
+
+// Fetch products from Shopify
+export async function getProducts(): Promise<Product[]> {
+  const shopifyProducts = await fetchShopifyProducts(50);
+  return shopifyProducts.map(shopifyProductToProduct);
+}
+
+// Get single product by handle/id
+export async function getProduct(handleOrId: string): Promise<Product | null> {
+  const shopifyProduct = await getProductByHandle(handleOrId);
+  if (!shopifyProduct) return null;
+  return shopifyProductToProduct(shopifyProduct);
+}
+
+// FALLBACK: Static products for development/testing
 // Product images were generated with Midjourney
 // and are stored in a public Vercel Blob storage bucket
-export const products: Product[] = [
+export const staticProducts: Product[] = [
   {
     id: 'ts-01-white',
     name: 'T-Shirt 01',
@@ -171,6 +219,11 @@ export const products: Product[] = [
   },
 ];
 
-export function getProductById(id: string): Product | undefined {
-  return products.find((product) => product.id === id);
+// Fallback function for static products (used in development or as backup)
+export function getStaticProductById(id: string): Product | undefined {
+  return staticProducts.find((product) => product.id === id);
 }
+
+// Legacy export for backwards compatibility
+// Note: This will be static products. Use getProducts() for Shopify products
+export const products = staticProducts;

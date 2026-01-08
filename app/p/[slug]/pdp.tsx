@@ -1,18 +1,30 @@
 'use client';
 
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { notFound, redirect } from 'next/navigation';
-import { getProductById } from '@/lib/products';
+import { getStaticProductById } from '@/lib/products';
 import { AddToCart } from '@/components/add-to-cart';
 import { Header } from '@/components/header';
 import { ProductImage } from '@/components/product-image';
+import { trackProductView } from '@/lib/analytics';
 
 export default function PDP({ slug }: { slug: string }) {
-  const product = getProductById(slug);
+  const product = getStaticProductById(slug);
 
   if (!product) {
     notFound();
   }
+
+  // Track product view
+  useEffect(() => {
+    trackProductView({
+      id: product.id,
+      name: product.name,
+      price: product.price || '0',
+      currencyCode: product.currencyCode,
+    });
+  }, [product]);
 
   const handleBack = () => {
     redirect('/');

@@ -5,9 +5,24 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { ChevronRight, Minus, Plus } from 'lucide-react';
 import { useCart } from './cart-context';
 import { SIZES } from './add-to-cart';
+import { trackBeginCheckout } from '@/lib/analytics';
 
 export function Cart({ isOpen, onClose }: { isOpen: boolean; onClose: any }) {
-  const { items, updateQuantity, total } = useCart();
+  const { items, updateQuantity, total, checkoutUrl, isLoading } = useCart();
+
+  const handleCheckout = () => {
+    // Track checkout event
+    trackBeginCheckout({
+      total,
+      items: items.map((item) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price || '0',
+        quantity: item.quantity,
+      })),
+      currencyCode: items[0]?.currencyCode,
+    });
+  };
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -56,14 +71,16 @@ export function Cart({ isOpen, onClose }: { isOpen: boolean; onClose: any }) {
                       <div className="flex items-center gap-4">
                         <button
                           className="p-1"
-                          onClick={() => updateQuantity(item.id, item.size, -1)}
+                          onClick={() => updateQuantity(item.id, item.size, -1, item.lineId)}
+                          disabled={isLoading}
                         >
                           <Minus className="h-3 w-3" />
                         </button>
                         <span className="font-mono">{item.quantity}</span>
                         <button
                           className="p-1"
-                          onClick={() => updateQuantity(item.id, item.size, 1)}
+                          onClick={() => updateQuantity(item.id, item.size, 1, item.lineId)}
+                          disabled={isLoading}
                         >
                           <Plus className="h-3 w-3" />
                         </button>
@@ -83,15 +100,24 @@ export function Cart({ isOpen, onClose }: { isOpen: boolean; onClose: any }) {
               <p className="font-mono text-sm text-muted-foreground">
                 TAX AND SHIPPING NOT INCLUDED
               </p>
-              <a
-                href="https://www.yeezy.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full flex items-center justify-between bg-black text-white p-4 font-mono"
-              >
-                CONTINUE
-                <ChevronRight className="h-4 w-4" />
-              </a>
+              {checkoutUrl ? (
+                <a
+                  href={checkoutUrl}
+                  onClick={handleCheckout}
+                  className="w-full flex items-center justify-between bg-black text-white p-4 font-mono hover:bg-gray-800 transition-colors disabled:opacity-50"
+                >
+                  CHECKOUT
+                  <ChevronRight className="h-4 w-4" />
+                </a>
+              ) : (
+                <button
+                  disabled
+                  className="w-full flex items-center justify-between bg-black text-white p-4 font-mono opacity-50 cursor-not-allowed"
+                >
+                  CHECKOUT
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              )}
             </div>
           </div>
         </div>
